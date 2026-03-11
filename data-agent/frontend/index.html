@@ -1,0 +1,1497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Data Agent Console</title>
+  <style>
+    :root {
+      --bg: #0b1120;
+      --bg-elevated: #020617;
+      --accent: #38bdf8;
+      --accent-soft: rgba(56, 189, 248, 0.1);
+      --accent-strong: rgba(56, 189, 248, 0.25);
+      --border-subtle: #1f2937;
+      --text: #e5e7eb;
+      --text-muted: #9ca3af;
+      --danger: #f97373;
+      --success: #22c55e;
+      --radius-lg: 16px;
+      --radius-md: 10px;
+      --transition-fast: 150ms ease-out;
+      --shadow-soft: 0 20px 40px rgba(15, 23, 42, 0.8);
+      --input-bg: #020617;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+        Segoe UI, sans-serif;
+      background: radial-gradient(circle at top, #0f172a 0, #020617 45%, #000 100%);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      padding: 32px 16px;
+    }
+
+    .shell {
+      width: 100%;
+      max-width: 1200px;
+      background: linear-gradient(145deg, #020617 0%, #020617 50%, #030712 100%);
+      border-radius: 24px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      box-shadow: var(--shadow-soft);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .shell-header {
+      padding: 18px 22px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+      background: radial-gradient(circle at top left, #0f172a 0, #020617 55%);
+    }
+
+    .traffic-lights {
+      display: flex;
+      gap: 6px;
+    }
+
+    .traffic-dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 999px;
+    }
+
+    .traffic-dot.red {
+      background: #f87171;
+    }
+
+    .traffic-dot.amber {
+      background: #facc15;
+    }
+
+    .traffic-dot.green {
+      background: #4ade80;
+    }
+
+    .shell-title {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .shell-title-main {
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .pill {
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.6);
+      padding: 2px 8px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #22c55e;
+      box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.3);
+    }
+
+    .shell-title-sub {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .shell-body {
+      display: grid;
+      grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.2fr);
+      gap: 0;
+      padding: 20px 22px 22px;
+    }
+
+    @media (max-width: 900px) {
+      .shell-body {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+    }
+
+    .left-column {
+      padding-right: 18px;
+      border-right: 1px solid var(--border-subtle);
+    }
+
+    @media (max-width: 900px) {
+      .left-column {
+        border-right: none;
+        border-bottom: 1px solid var(--border-subtle);
+        padding-right: 0;
+        padding-bottom: 18px;
+      }
+    }
+
+    .right-column {
+      padding-left: 18px;
+    }
+
+    @media (max-width: 900px) {
+      .right-column {
+        padding-left: 0;
+      }
+    }
+
+    .headline {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 18px;
+    }
+
+    .headline h1 {
+      font-size: clamp(22px, 3vw, 26px);
+      margin: 0;
+      letter-spacing: 0.02em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .headline span.accent {
+      background: linear-gradient(120deg, #38bdf8, #a855f7);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .headline p {
+      margin: 0;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .badge {
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(55, 65, 81, 0.9);
+      background: radial-gradient(circle at top, rgba(56, 189, 248, 0.12), rgba(15, 23, 42, 0.9));
+      color: var(--text-muted);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .badge-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: rgba(56, 189, 248, 0.9);
+    }
+
+    .tabs {
+      display: inline-flex;
+      padding: 3px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(31, 41, 55, 0.9);
+      margin-bottom: 14px;
+    }
+
+    .tab {
+      border: none;
+      padding: 7px 14px;
+      font-size: 12px;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: background var(--transition-fast), color var(--transition-fast),
+        transform var(--transition-fast);
+    }
+
+    .tab span.icon {
+      font-size: 14px;
+    }
+
+    .tab.active {
+      background: radial-gradient(circle at top, rgba(56, 189, 248, 0.4), #0b1120);
+      color: var(--text);
+      transform: translateY(-1px);
+      box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.4);
+    }
+
+    .tab:not(.active):hover {
+      background: rgba(15, 23, 42, 0.9);
+      color: var(--text);
+    }
+
+    .section {
+      display: none;
+      border-radius: var(--radius-lg);
+      background: radial-gradient(circle at top left, #020617, #020617 55%, #030712 100%);
+      border: 1px solid rgba(31, 41, 55, 0.95);
+      padding: 16px 16px 14px;
+    }
+
+    .section.active {
+      display: block;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .section-title {
+      font-size: 14px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-title-pill {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(31, 41, 55, 0.9);
+      color: var(--text-muted);
+    }
+
+    .section-subtitle {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+      gap: 12px;
+    }
+
+    @media (max-width: 640px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card-soft {
+      border-radius: var(--radius-md);
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(31, 41, 55, 0.95);
+      padding: 12px 12px 10px;
+    }
+
+    .label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .label span.strong {
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    .hint {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    input[type="file"],
+    input[type="text"],
+    textarea {
+      width: 100%;
+      font-family: inherit;
+      font-size: 13px;
+      background: var(--input-bg);
+      color: var(--text);
+      border-radius: 10px;
+      border: 1px solid rgba(31, 41, 55, 0.95);
+      padding: 9px 10px;
+      outline: none;
+      transition: border-color var(--transition-fast), box-shadow var(--transition-fast),
+        background var(--transition-fast), transform var(--transition-fast);
+    }
+
+    input[type="file"] {
+      padding: 8px 10px;
+    }
+
+    input[type="file"]::file-selector-button {
+      margin-right: 12px;
+      border: none;
+      border-radius: 8px;
+      padding: 6px 10px;
+      background: var(--accent);
+      color: #020617;
+      font-weight: 500;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background var(--transition-fast), transform var(--transition-fast),
+        box-shadow var(--transition-fast);
+    }
+
+    input[type="file"]::file-selector-button:hover {
+      background: #0ea5e9;
+      transform: translateY(-0.5px);
+      box-shadow: 0 8px 20px rgba(56, 189, 248, 0.25);
+    }
+
+    input[type="file"]::file-selector-button:active {
+      transform: translateY(0);
+      box-shadow: none;
+    }
+
+    input:focus,
+    textarea:focus {
+      border-color: rgba(56, 189, 248, 0.9);
+      box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.5);
+      background: #020617;
+      transform: translateY(-0.5px);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 100px;
+      max-height: 220px;
+    }
+
+    button.primary {
+      width: 100%;
+      border-radius: 999px;
+      border: none;
+      padding: 10px 12px;
+      margin-top: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      color: #020617;
+      background: radial-gradient(circle at top, #38bdf8, #0ea5e9);
+      box-shadow: 0 14px 32px rgba(56, 189, 248, 0.35);
+      transition: transform var(--transition-fast), box-shadow var(--transition-fast),
+        filter var(--transition-fast), opacity var(--transition-fast),
+        background var(--transition-fast);
+    }
+
+    button.primary:hover:not(:disabled) {
+      transform: translateY(-1.5px);
+      box-shadow: 0 18px 40px rgba(56, 189, 248, 0.5);
+      filter: brightness(1.05);
+    }
+
+    button.primary:active:not(:disabled) {
+      transform: translateY(0);
+      box-shadow: 0 10px 20px rgba(56, 189, 248, 0.35);
+      filter: brightness(0.98);
+    }
+
+    button.primary:disabled {
+      opacity: 0.5;
+      cursor: default;
+      box-shadow: none;
+    }
+
+    button.secondary {
+      border-radius: 999px;
+      border: 1px solid rgba(31, 41, 55, 0.95);
+      padding: 7px 10px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      background: rgba(15, 23, 42, 0.9);
+      color: var(--text-muted);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: background var(--transition-fast), color var(--transition-fast),
+        transform var(--transition-fast), border-color var(--transition-fast);
+    }
+
+    button.secondary:hover {
+      background: rgba(15, 23, 42, 1);
+      color: var(--text);
+      border-color: rgba(55, 65, 81, 1);
+      transform: translateY(-0.5px);
+    }
+
+    .progress-shell {
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(31, 41, 55, 0.95);
+      padding: 6px 9px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-top: 6px;
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 1);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #22c55e, #38bdf8);
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.7);
+      transition: width 220ms ease-in-out;
+    }
+
+    .progress-label-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .progress-label-row span.value {
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    .status-chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .status-chip {
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(31, 41, 55, 0.95);
+      background: rgba(15, 23, 42, 0.88);
+      color: var(--text-muted);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .status-chip-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+    }
+
+    .status-chip-dot.green {
+      background: #22c55e;
+    }
+
+    .status-chip-dot.yellow {
+      background: #eab308;
+    }
+
+    .status-chip-dot.red {
+      background: #f97373;
+    }
+
+    .status-chip-dot.blue {
+      background: #38bdf8;
+    }
+
+    .status-log {
+      margin-top: 10px;
+      font-size: 12px;
+      line-height: 1.5;
+      color: var(--text-muted);
+      max-height: 110px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .status-entry {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .status-entry span.time {
+      font-size: 11px;
+      color: rgba(148, 163, 184, 0.8);
+      flex: 0 0 60px;
+    }
+
+    .status-entry span.msg {
+      flex: 1;
+    }
+
+    .status-entry strong {
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    .preview-table-wrapper {
+      max-height: 220px;
+      overflow: auto;
+      border-radius: 10px;
+      border: 1px solid rgba(31, 41, 55, 0.95);
+      background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.85), #020617);
+      margin-top: 6px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    thead {
+      position: sticky;
+      top: 0;
+      background: rgba(15, 23, 42, 1);
+      z-index: 1;
+    }
+
+    th,
+    td {
+      padding: 7px 8px;
+      text-align: left;
+      border-bottom: 1px solid rgba(31, 41, 55, 0.9);
+      white-space: nowrap;
+    }
+
+    th {
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+
+    tbody tr:nth-child(even) {
+      background: rgba(15, 23, 42, 0.65);
+    }
+
+    tbody tr:hover {
+      background: rgba(15, 23, 42, 0.9);
+    }
+
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    @media (max-width: 640px) {
+      .metrics-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    .metric {
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.92);
+      border: 1px solid rgba(31, 41, 55, 0.95);
+      padding: 8px 10px;
+    }
+
+    .metric-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 3px;
+    }
+
+    .metric-value {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .metric-pill {
+      font-size: 11px;
+      margin-top: 3px;
+      color: var(--text-muted);
+    }
+
+    .endpoint-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+
+    .endpoint-pill {
+      font-size: 11px;
+      padding: 3px 7px;
+      border-radius: 999px;
+      border: 1px solid rgba(31, 41, 55, 0.95);
+      background: rgba(15, 23, 42, 0.98);
+      color: var(--text-muted);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+        "Courier New", monospace;
+      font-size: 11px;
+      color: rgba(148, 163, 184, 1);
+    }
+
+    .json-view {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+        "Courier New", monospace;
+      font-size: 11px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 220px;
+      overflow: auto;
+      margin-top: 6px;
+      padding: 8px 9px;
+      border-radius: 10px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(31, 41, 55, 0.95);
+      color: rgba(156, 163, 175, 0.98);
+    }
+
+    .footer {
+      padding: 10px 22px 14px;
+      border-top: 1px solid rgba(31, 41, 55, 0.95);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 11px;
+      color: var(--text-muted);
+      background: radial-gradient(circle at bottom, #020617, #000 90%);
+    }
+
+    .footer span strong {
+      color: var(--text);
+    }
+
+    .footer-legend {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend-swatch {
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+    }
+
+    .legend-swatch.upload {
+      background: #38bdf8;
+    }
+
+    .legend-swatch.pg {
+      background: #22c55e;
+    }
+
+    .legend-swatch.agent {
+      background: #a855f7;
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="shell-header">
+      <div class="traffic-lights">
+        <div class="traffic-dot red"></div>
+        <div class="traffic-dot amber"></div>
+        <div class="traffic-dot green"></div>
+      </div>
+      <div class="shell-title">
+        <div class="shell-title-main">
+          Data Agent Console
+          <span class="pill">
+            <span class="status-dot"></span>
+            LIVE
+          </span>
+        </div>
+        <div class="shell-title-sub">
+          Unified UI for Excel upload, PostgreSQL API, and LLM-powered analysis — all without changing your backend code.
+        </div>
+      </div>
+      <div>
+        <span class="pill">
+          <span style="width: 8px; height: 8px; border-radius: 999px; background: #38bdf8;"></span>
+          http://localhost:8000 / 8001 / 8002
+        </span>
+      </div>
+    </header>
+
+    <main class="shell-body">
+      <section class="left-column">
+        <div class="headline">
+          <h1>
+            Orchestrate your
+            <span class="accent">data workflow</span>
+          </h1>
+          <p>
+            1) Upload Excel → PostgreSQL, 2) browse tables via pg-agent, and 3) ask natural language questions over your data —
+            all from one surface.
+          </p>
+        </div>
+
+        <div class="badge-row">
+          <span class="badge">
+            <span class="badge-dot"></span>
+            Enhanced Uploader · :8000
+          </span>
+          <span class="badge">
+            <span class="badge-dot"></span>
+            pg-agent API · :8001
+          </span>
+          <span class="badge">
+            <span class="badge-dot"></span>
+            Query Agent · :8002
+          </span>
+        </div>
+
+        <div class="tabs" id="tabs">
+          <button class="tab active" data-target="section-upload">
+            <span class="icon">📤</span>
+            Upload & Ingest
+          </button>
+          <button class="tab" data-target="section-db">
+            <span class="icon">🗄️</span>
+            Tables & Preview
+          </button>
+          <button class="tab" data-target="section-agent">
+            <span class="icon">🤖</span>
+            Ask the Agent
+          </button>
+        </div>
+
+        <!-- Upload section -->
+        <section class="section active" id="section-upload">
+          <div class="section-header">
+            <div class="section-title">
+              <span>📤 Enhanced Dynamic Data Uploader</span>
+              <span class="section-title-pill">FastAPI · :8000</span>
+            </div>
+          </div>
+          <div class="grid">
+            <div class="card-soft">
+              <div class="label">
+                <span class="strong">1. Upload Excel</span>
+                <span class="hint">.xlsx / .xls → PostgreSQL</span>
+              </div>
+              <input type="file" id="upload-file" accept=".xlsx,.xls" />
+              <button class="primary" id="upload-btn">
+                <span>Ingest to Database</span>
+              </button>
+
+              <div class="progress-shell" id="upload-progress-shell" style="margin-top: 10px;">
+                <div class="progress-track">
+                  <div class="progress-fill" id="upload-progress-bar"></div>
+                </div>
+                <div class="progress-label-row">
+                  <span id="upload-progress-text">Waiting for file…</span>
+                  <span class="value" id="upload-progress-value">0%</span>
+                </div>
+              </div>
+
+              <div class="status-chip-row">
+                <div class="status-chip">
+                  <span class="status-chip-dot blue"></span>
+                  Endpoint <code>/upload</code>
+                </div>
+                <div class="status-chip">
+                  <span class="status-chip-dot.green"></span>
+                  Auto DB + table creation
+                </div>
+                <div class="status-chip">
+                  <span class="status-chip-dot yellow"></span>
+                  Excel only
+                </div>
+              </div>
+
+              <div class="status-log" id="upload-status-log"></div>
+            </div>
+
+            <div class="card-soft">
+              <div class="label">
+                <span class="strong">Result Snapshot</span>
+                <span class="hint" id="upload-result-hint">Awaiting first upload…</span>
+              </div>
+              <div class="metrics-grid">
+                <div class="metric">
+                  <div class="metric-label">Rows</div>
+                  <div class="metric-value" id="metric-rows">0</div>
+                  <div class="metric-pill" id="metric-rows-pill">—</div>
+                </div>
+                <div class="metric">
+                  <div class="metric-label">Columns</div>
+                  <div class="metric-value" id="metric-cols">0</div>
+                  <div class="metric-pill" id="metric-cols-pill">—</div>
+                </div>
+                <div class="metric">
+                  <div class="metric-label">Table</div>
+                  <div class="metric-value" id="metric-table">—</div>
+                  <div class="metric-pill" id="metric-db">DB: insurance</div>
+                </div>
+              </div>
+              <div class="preview-table-wrapper" id="upload-preview-wrapper" style="display: none;">
+                <table id="upload-preview-table"></table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- DB / pg-agent section -->
+        <section class="section" id="section-db">
+          <div class="section-header">
+            <div class="section-title">
+              <span>🗄️ PostgreSQL Tables via pg-agent</span>
+              <span class="section-title-pill">FastAPI · :8001</span>
+            </div>
+          </div>
+          <div class="grid">
+            <div class="card-soft">
+              <div class="label">
+                <span class="strong">Schema overview</span>
+                <span class="hint">Backed by <code>/api/tables</code> routes</span>
+              </div>
+
+              <div class="endpoint-row">
+                <span class="endpoint-pill">
+                  <span class="legend-swatch pg"></span>
+                  Tables index
+                </span>
+                <code>GET /api/tables</code>
+              </div>
+
+              <button class="secondary" id="btn-refresh-tables">
+                <span>Refresh tables</span>
+              </button>
+
+              <div class="status-log" id="tables-status-log"></div>
+            </div>
+
+            <div class="card-soft">
+              <div class="label">
+                <span class="strong">Table preview</span>
+                <span class="hint">First 100 rows from selected table</span>
+              </div>
+              <select id="table-select" style="
+                  width: 100%;
+                  margin-bottom: 6px;
+                  background: var(--input-bg);
+                  color: var(--text);
+                  border-radius: 10px;
+                  border: 1px solid rgba(31, 41, 55, 0.95);
+                  padding: 7px 10px;
+                  font-size: 12px;
+                ">
+                <option value="">No tables loaded yet</option>
+              </select>
+              <button class="secondary" id="btn-load-table">
+                <span>Load preview</span>
+              </button>
+
+              <div class="preview-table-wrapper" id="tables-preview-wrapper" style="margin-top: 8px; display: none;">
+                <table id="tables-preview-table"></table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Agent section -->
+        <section class="section" id="section-agent">
+          <div class="section-header">
+            <div class="section-title">
+              <span>🤖 LLM Data Analysis Agent</span>
+              <span class="section-title-pill">FastAPI · :8002</span>
+            </div>
+          </div>
+          <div class="grid">
+            <div class="card-soft">
+              <div class="label">
+                <span class="strong">Ask a question</span>
+                <span class="hint">Uses <code>/analyze</code> with full dataset context</span>
+              </div>
+
+              <textarea id="agent-query" placeholder="e.g. “Which employees have the highest total claim amount in the last 12 months?”"></textarea>
+
+              <div class="label" style="margin-top: 8px;">
+                <span class="strong">Data endpoint (optional)</span>
+                <span class="hint">Defaults to the configured table in <code>query.py</code></span>
+              </div>
+              <input type="text" id="agent-endpoint" placeholder="http://localhost:8001/api/tables/your_table_name"
+                style="font-size: 11px;" />
+
+              <button class="primary" id="agent-btn">
+                <span>Run analysis</span>
+              </button>
+
+              <div class="status-chip-row">
+                <div class="status-chip">
+                  <span class="status-chip-dot blue"></span>
+                  Endpoint <code>/analyze</code>
+                </div>
+                <div class="status-chip">
+                  <span class="status-chip-dot.green"></span>
+                  Model <code>gpt-4o</code>
+                </div>
+                <div class="status-chip">
+                  <span class="status-chip-dot yellow"></span>
+                  Full dataset in system prompt
+                </div>
+              </div>
+            </div>
+
+            <div class="card-soft">
+              <div class="label">
+                <span class="strong">Agent answer</span>
+                <span class="hint" id="agent-answer-hint">No query yet.</span>
+              </div>
+              <div class="json-view" id="agent-answer-view"></div>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <aside class="right-column">
+        <div class="card-soft" style="margin-bottom: 10px;">
+          <div class="label">
+            <span class="strong">Connection map</span>
+            <span class="hint">Everything stays in your existing services</span>
+          </div>
+          <div class="json-view" style="max-height: none;">
+{ "frontend": {
+    "origin": "file:// or any static host",
+    "uses": [
+      {
+        "service": "Enhanced Uploader",
+        "base_url": "http://localhost:8000",
+        "endpoints": ["/upload", "/tables", "/table/{name}"]
+      },
+      {
+        "service": "pg-agent",
+        "base_url": "http://localhost:8001",
+        "endpoints": ["/api/tables", "/api/tables/{table}"]
+      },
+      {
+        "service": "Data Analysis Agent",
+        "base_url": "http://localhost:8002",
+        "endpoints": ["/analyze", "/preview-data"]
+      }
+    ]
+  }
+}
+          </div>
+        </div>
+
+        <div class="card-soft">
+          <div class="label">
+            <span class="strong">Runtime diagnostics</span>
+            <span class="hint">Basic ping checks (optional)</span>
+          </div>
+          <button class="secondary" id="btn-ping">
+            <span>Ping all services</span>
+          </button>
+          <div class="status-log" id="ping-log"></div>
+        </div>
+      </aside>
+    </main>
+
+    <footer class="footer">
+      <span>
+        <strong>How to use:</strong>
+        1) Ensure your three FastAPI servers are running on ports 8000, 8001, and 8002.
+        2) Open this HTML file in a browser (or serve it statically).
+      </span>
+      <div class="footer-legend">
+        <span class="legend-item">
+          <span class="legend-swatch upload"></span> Upload service
+        </span>
+        <span class="legend-item">
+          <span class="legend-swatch pg"></span> pg-agent
+        </span>
+        <span class="legend-item">
+          <span class="legend-swatch.agent"></span> Query agent
+        </span>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    // ---- Configuration -------------------------------------------------------
+    const CONFIG = {
+      uploaderBaseUrl: "http://localhost:8000",
+      pgAgentBaseUrl: "http://localhost:8001",
+      queryAgentBaseUrl: "http://localhost:8002",
+    };
+
+    // ---- Tab handling --------------------------------------------------------
+    const tabs = document.querySelectorAll(".tab");
+    const sections = document.querySelectorAll(".section");
+
+    tabs.forEach((tab) => {
+      tab.addEventListener("click", () => {
+        const targetId = tab.dataset.target;
+
+        tabs.forEach((t) => t.classList.remove("active"));
+        sections.forEach((s) => s.classList.remove("active"));
+
+        tab.classList.add("active");
+        document.getElementById(targetId).classList.add("active");
+      });
+    });
+
+    // ---- Helper: status log --------------------------------------------------
+    function appendStatus(logEl, message, level = "info") {
+      if (!logEl) return;
+      const entry = document.createElement("div");
+      entry.className = "status-entry";
+
+      const now = new Date();
+      const time = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      const timeSpan = document.createElement("span");
+      timeSpan.className = "time";
+      timeSpan.textContent = time;
+
+      const msgSpan = document.createElement("span");
+      msgSpan.className = "msg";
+      msgSpan.innerHTML = message;
+
+      if (level === "error") {
+        msgSpan.style.color = "#f97373";
+      } else if (level === "success") {
+        msgSpan.style.color = "#4ade80";
+      }
+
+      entry.appendChild(timeSpan);
+      entry.appendChild(msgSpan);
+      logEl.appendChild(entry);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    // ---- Upload integration (:8000) -----------------------------------------
+    const uploadFileInput = document.getElementById("upload-file");
+    const uploadBtn = document.getElementById("upload-btn");
+    const uploadProgressBar = document.getElementById("upload-progress-bar");
+    const uploadProgressText = document.getElementById("upload-progress-text");
+    const uploadProgressValue = document.getElementById("upload-progress-value");
+    const uploadStatusLog = document.getElementById("upload-status-log");
+    const uploadResultHint = document.getElementById("upload-result-hint");
+    const metricRows = document.getElementById("metric-rows");
+    const metricRowsPill = document.getElementById("metric-rows-pill");
+    const metricCols = document.getElementById("metric-cols");
+    const metricColsPill = document.getElementById("metric-cols-pill");
+    const metricTable = document.getElementById("metric-table");
+    const metricDb = document.getElementById("metric-db");
+    const uploadPreviewWrapper = document.getElementById("upload-preview-wrapper");
+    const uploadPreviewTable = document.getElementById("upload-preview-table");
+
+    function setUploadProgress(pct, label) {
+      uploadProgressBar.style.width = pct + "%";
+      uploadProgressValue.textContent = pct + "%";
+      if (label) uploadProgressText.textContent = label;
+    }
+
+    function renderPreviewTable(tableEl, data) {
+      if (!tableEl) return;
+      tableEl.innerHTML = "";
+      if (!data || !data.length) {
+        tableEl.innerHTML = "<tbody><tr><td>No data to display</td></tr></tbody>";
+        return;
+      }
+
+      const columns = Object.keys(data[0]);
+
+      const thead = document.createElement("thead");
+      const headRow = document.createElement("tr");
+      columns.forEach((col) => {
+        const th = document.createElement("th");
+        th.textContent = col;
+        headRow.appendChild(th);
+      });
+      thead.appendChild(headRow);
+
+      const tbody = document.createElement("tbody");
+      data.forEach((row) => {
+        const tr = document.createElement("tr");
+        columns.forEach((col) => {
+          const td = document.createElement("td");
+          td.textContent = row[col];
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+
+      tableEl.appendChild(thead);
+      tableEl.appendChild(tbody);
+    }
+
+    uploadBtn.addEventListener("click", async () => {
+      const file = uploadFileInput.files && uploadFileInput.files[0];
+      if (!file) {
+        appendStatus(uploadStatusLog, "Please choose an Excel file first.", "error");
+        return;
+      }
+
+      uploadBtn.disabled = true;
+      setUploadProgress(8, "Preparing upload…");
+      appendStatus(uploadStatusLog, `Selected file <strong>${file.name}</strong>.`);
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      try {
+        setUploadProgress(25, "Uploading to /upload…");
+        const resp = await fetch(`${CONFIG.uploaderBaseUrl}/upload`, {
+          method: "POST",
+          body: formData,
+        });
+
+        setUploadProgress(60, "Processing on server…");
+
+        const payload = await resp.json();
+
+        if (!resp.ok) {
+          const detail = payload?.detail || "Upload failed.";
+          appendStatus(uploadStatusLog, `Upload error: ${detail}`, "error");
+          setUploadProgress(100, "Failed");
+          return;
+        }
+
+        appendStatus(
+          uploadStatusLog,
+          `Upload complete. Created table <strong>${payload.table_name}</strong> with <strong>${payload.rows_processed}</strong> rows and <strong>${payload.columns_processed}</strong> columns.`,
+          "success"
+        );
+
+        setUploadProgress(100, "Completed");
+
+        metricRows.textContent = payload.rows_processed ?? 0;
+        metricRowsPill.textContent = payload.rows_processed
+          ? `Previewing first ${Math.min(5, payload.rows_processed)} rows`
+          : "No rows";
+
+        metricCols.textContent = payload.columns_processed ?? 0;
+        metricColsPill.textContent = payload.columns_processed
+          ? `${payload.columns_processed} inferred column types`
+          : "No columns";
+
+        metricTable.textContent = payload.table_name ?? "—";
+        metricDb.textContent =
+          "DB: " + (payload.message?.match(/database '([^']+)'/)?.[1] || "insurance");
+
+        const preview = payload.preview_data || [];
+        if (preview.length) {
+          uploadPreviewWrapper.style.display = "block";
+          renderPreviewTable(uploadPreviewTable, preview);
+          uploadResultHint.textContent = "Showing preview from Enhanced Uploader response.";
+        } else {
+          uploadPreviewWrapper.style.display = "none";
+          uploadResultHint.textContent = "Upload succeeded, but no preview data was returned.";
+        }
+      } catch (err) {
+        console.error(err);
+        appendStatus(
+          uploadStatusLog,
+          `Network or server error when calling <code>${CONFIG.uploaderBaseUrl}/upload</code>. Check that :8000 is running.`,
+          "error"
+        );
+        setUploadProgress(100, "Error");
+      } finally {
+        uploadBtn.disabled = false;
+        setTimeout(() => setUploadProgress(0, "Idle"), 1500);
+      }
+    });
+
+    // ---- pg-agent integration (:8001) ---------------------------------------
+    const btnRefreshTables = document.getElementById("btn-refresh-tables");
+    const tablesStatusLog = document.getElementById("tables-status-log");
+    const tableSelect = document.getElementById("table-select");
+    const btnLoadTable = document.getElementById("btn-load-table");
+    const tablesPreviewWrapper = document.getElementById("tables-preview-wrapper");
+    const tablesPreviewTable = document.getElementById("tables-preview-table");
+
+    btnRefreshTables.addEventListener("click", async () => {
+      appendStatus(tablesStatusLog, "Fetching tables from pg-agent /api/tables…");
+      tableSelect.innerHTML = '<option value="">Loading…</option>';
+
+      try {
+        const resp = await fetch(`${CONFIG.pgAgentBaseUrl}/api/tables`);
+        if (!resp.ok) {
+          appendStatus(
+            tablesStatusLog,
+            `Failed to fetch tables (HTTP ${resp.status}).`,
+            "error"
+          );
+          return;
+        }
+
+        const payload = await resp.json();
+        const tables = Array.isArray(payload?.tables) ? payload.tables : [];
+
+        if (!tables.length) {
+          appendStatus(tablesStatusLog, "No tables returned from pg-agent.", "error");
+          tableSelect.innerHTML =
+            '<option value="">No tables available</option>';
+          return;
+        }
+
+        tableSelect.innerHTML = "";
+        tables.forEach((t) => {
+          const opt = document.createElement("option");
+          opt.value = t.name || t.table_name || t;
+          opt.textContent = opt.value;
+          tableSelect.appendChild(opt);
+        });
+
+        appendStatus(
+          tablesStatusLog,
+          `Loaded <strong>${tables.length}</strong> tables from pg-agent.`,
+          "success"
+        );
+      } catch (err) {
+        console.error(err);
+        appendStatus(
+          tablesStatusLog,
+          `Error contacting pg-agent at <code>${CONFIG.pgAgentBaseUrl}</code>. Ensure the :8001 server is running.`,
+          "error"
+        );
+        tableSelect.innerHTML =
+          '<option value="">Error loading tables</option>';
+      }
+    });
+
+    btnLoadTable.addEventListener("click", async () => {
+      const tableName = tableSelect.value;
+      if (!tableName) {
+        appendStatus(tablesStatusLog, "Select a table first.", "error");
+        return;
+      }
+
+      appendStatus(
+        tablesStatusLog,
+        `Fetching first 100 rows for table <strong>${tableName}</strong> from pg-agent…`
+      );
+
+      try {
+        // Depending on your actual pg-agent routes, you may need to adjust this.
+        // Here we assume a standard "GET /api/tables/{name}" pattern like the
+        // Data Analysis Agent expects.
+        const resp = await fetch(
+          `${CONFIG.pgAgentBaseUrl}/api/tables/${encodeURIComponent(tableName)}?limit=100&offset=0`
+        );
+
+        if (!resp.ok) {
+          appendStatus(
+            tablesStatusLog,
+            `Failed to fetch data for table (HTTP ${resp.status}).`,
+            "error"
+          );
+          return;
+        }
+
+        const payload = await resp.json();
+        const rows = payload.rows || payload.data || payload || [];
+
+        if (!rows.length) {
+          appendStatus(
+            tablesStatusLog,
+            `No rows returned for table <strong>${tableName}</strong>.`,
+            "error"
+          );
+          tablesPreviewWrapper.style.display = "none";
+          return;
+        }
+
+        tablesPreviewWrapper.style.display = "block";
+        renderPreviewTable(tablesPreviewTable, rows.slice(0, 100));
+        appendStatus(
+          tablesStatusLog,
+          `Rendering preview for <strong>${Math.min(
+            rows.length,
+            100
+          )}</strong> rows.`,
+          "success"
+        );
+      } catch (err) {
+        console.error(err);
+        appendStatus(
+          tablesStatusLog,
+          `Error fetching table preview from pg-agent. Check your /api/tables/{name} route.`,
+          "error"
+        );
+        tablesPreviewWrapper.style.display = "none";
+      }
+    });
+
+    // ---- Query Agent integration (:8002) ------------------------------------
+    const agentQueryInput = document.getElementById("agent-query");
+    const agentEndpointInput = document.getElementById("agent-endpoint");
+    const agentBtn = document.getElementById("agent-btn");
+    const agentAnswerHint = document.getElementById("agent-answer-hint");
+    const agentAnswerView = document.getElementById("agent-answer-view");
+
+    // Initialize endpoint field with the default from query.py
+    agentEndpointInput.value =
+      "http://localhost:8001/api/tables/extracted_schema_20260304_192410";
+
+    agentBtn.addEventListener("click", async () => {
+      const question = agentQueryInput.value.trim();
+      const endpointOverride = agentEndpointInput.value.trim();
+
+      if (!question) {
+        agentAnswerHint.textContent = "Please enter a question for the agent.";
+        agentAnswerHint.style.color = "#f97373";
+        return;
+      }
+
+      agentBtn.disabled = true;
+      agentAnswerHint.textContent = "Running analysis via /analyze…";
+      agentAnswerHint.style.color = "var(--text-muted)";
+      agentAnswerView.textContent = "";
+
+      try {
+        const body = {
+          query: question,
+        };
+        if (endpointOverride) {
+          body.endpoint = endpointOverride;
+        }
+
+        const resp = await fetch(`${CONFIG.queryAgentBaseUrl}/analyze`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(body),
+        });
+
+        const payload = await resp.json();
+        if (!resp.ok) {
+          const detail = payload?.detail || "Agent returned an error.";
+          agentAnswerHint.textContent = `Error: ${detail}`;
+          agentAnswerHint.style.color = "#f97373";
+          return;
+        }
+
+        const pretty = JSON.stringify(payload, null, 2);
+        agentAnswerView.textContent = pretty;
+        agentAnswerHint.textContent = `Answer from agent · rows scanned: ${payload.row_count ?? "?"}`;
+        agentAnswerHint.style.color = "var(--text-muted)";
+      } catch (err) {
+        console.error(err);
+        agentAnswerHint.textContent =
+          "Failed to contact query agent at :8002. Check that the server is running.";
+        agentAnswerHint.style.color = "#f97373";
+      } finally {
+        agentBtn.disabled = false;
+      }
+    });
+
+    // ---- Health / ping checks ----------------------------------------------
+    const btnPing = document.getElementById("btn-ping");
+    const pingLog = document.getElementById("ping-log");
+
+    btnPing.addEventListener("click", async () => {
+      pingLog.innerHTML = "";
+      appendStatus(pingLog, "Pinging all services…");
+
+      const checks = [
+        {
+          name: "Uploader (:8000)",
+          url: `${CONFIG.uploaderBaseUrl}/tables`,
+        },
+        {
+          name: "pg-agent (:8001)",
+          url: `${CONFIG.pgAgentBaseUrl}/health`,
+        },
+        {
+          name: "Query Agent (:8002)",
+          url: `${CONFIG.queryAgentBaseUrl}/`,
+        },
+      ];
+
+      for (const check of checks) {
+        try {
+          const resp = await fetch(check.url);
+          if (!resp.ok) {
+            appendStatus(
+              pingLog,
+              `${check.name}: HTTP ${resp.status} from <code>${check.url}</code>`,
+              "error"
+            );
+          } else {
+            appendStatus(
+              pingLog,
+              `${check.name}: OK from <code>${check.url}</code>`,
+              "success"
+            );
+          }
+        } catch (err) {
+          appendStatus(
+            pingLog,
+            `${check.name}: no response from <code>${check.url}</code>`,
+            "error"
+          );
+        }
+      }
+    });
+  </script>
+</body>
+</html>
+

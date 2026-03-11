@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DataMind Agent</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0a0a0f;--surface:#12121a;--surface2:#1a1a28;--border:#2a2a40;
+    --accent:#00e5ff;--accent2:#7c3aed;--accent3:#f59e0b;
+    --text:#e8e8f0;--muted:#6b7280;--success:#10b981;--danger:#ef4444;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;overflow-x:hidden}
+  body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,229,255,.025)1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,.025)1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+
+  /* CONNECT SCREEN */
+  #connectScreen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:100;background:var(--bg)}
+  .connect-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:40px 44px;width:540px;box-shadow:0 0 80px rgba(124,58,237,.15);position:relative;z-index:1}
+  .connect-logo{width:56px;height:56px;background:linear-gradient(135deg,var(--accent2),var(--accent));border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:26px;margin-bottom:20px;box-shadow:0 0 30px rgba(0,229,255,.25)}
+  .connect-card h1{font-size:26px;font-weight:800;margin-bottom:6px}
+  .connect-card h1 span{color:var(--accent)}
+  .connect-card p{color:var(--muted);font-size:14px;margin-bottom:28px;line-height:1.6}
+  .field-label{font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;display:block}
+  .url-input{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:'Space Mono',monospace;font-size:13px;padding:12px 16px;border-radius:10px;outline:none;transition:border-color .2s;margin-bottom:12px}
+  .url-input:focus{border-color:var(--accent)}
+  .url-input::placeholder{color:var(--muted)}
+  .auth-row{display:flex;gap:8px;margin-bottom:12px}
+  .auth-select{background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:'Space Mono',monospace;font-size:12px;padding:10px 12px;border-radius:8px;outline:none;cursor:pointer;width:130px;flex-shrink:0}
+  .auth-select option{background:#1a1a28}
+  .auth-input{flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:'Space Mono',monospace;font-size:12px;padding:10px 14px;border-radius:8px;outline:none;transition:border-color .2s}
+  .auth-input:focus{border-color:var(--accent)}
+  .auth-input::placeholder{color:var(--muted)}
+  .connect-btn{width:100%;padding:14px;background:linear-gradient(135deg,var(--accent2),var(--accent));border:none;border-radius:10px;color:white;font-family:'Syne',sans-serif;font-size:15px;font-weight:700;cursor:pointer;margin-top:8px;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px}
+  .connect-btn:hover{transform:translateY(-1px);box-shadow:0 8px 30px rgba(124,58,237,.4)}
+  .connect-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+  .demo-pills{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:24px}
+  .demo-pill{background:rgba(0,229,255,.06);border:1px solid rgba(0,229,255,.18);color:var(--accent);font-family:'Space Mono',monospace;font-size:10px;padding:4px 10px;border-radius:20px;cursor:pointer;transition:all .15s;white-space:nowrap}
+  .demo-pill:hover{background:rgba(0,229,255,.14)}
+  .connect-error{color:var(--danger);font-size:12px;font-family:'Space Mono',monospace;margin-top:10px;display:none}
+
+  /* LAYOUT */
+  #appScreen{display:none}
+  .layout{display:grid;grid-template-columns:380px 1fr;grid-template-rows:60px 1fr;height:100vh;position:relative;z-index:1}
+  header{grid-column:1/-1;display:flex;align-items:center;gap:12px;padding:0 24px;border-bottom:1px solid var(--border);background:rgba(10,10,15,.92);backdrop-filter:blur(12px)}
+  .logo-dot{width:10px;height:10px;background:var(--accent);border-radius:50%;box-shadow:0 0 12px var(--accent);animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.7)}}
+  header h1{font-size:17px;font-weight:800}
+  header h1 span{color:var(--accent)}
+  .endpoint-tag{margin-left:8px;font-family:'Space Mono',monospace;font-size:10px;color:var(--accent3);background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);padding:3px 8px;border-radius:4px;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .reconnect-btn{margin-left:auto;background:transparent;border:1px solid var(--border);color:var(--muted);font-family:'Space Mono',monospace;font-size:10px;padding:4px 10px;border-radius:6px;cursor:pointer;transition:all .2s}
+  .reconnect-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .status-pill{display:flex;align-items:center;gap:6px;font-family:'Space Mono',monospace;font-size:11px;color:var(--success);background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);padding:4px 10px;border-radius:20px}
+  .status-pill::before{content:'';width:6px;height:6px;background:var(--success);border-radius:50%;animation:pulse 1.5s infinite}
+
+  /* SIDEBAR */
+  .sidebar{border-right:1px solid var(--border);background:var(--surface);overflow:hidden;display:flex;flex-direction:column}
+  .sidebar-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+  .sidebar-header h2{font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--muted)}
+  .row-count{font-family:'Space Mono',monospace;font-size:10px;color:var(--accent);background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.2);padding:2px 8px;border-radius:4px}
+  .table-wrap{overflow:auto;flex:1}
+  .data-table{width:100%;border-collapse:collapse;font-size:11px;font-family:'Space Mono',monospace;min-width:340px}
+  .data-table thead th{padding:8px 10px;background:var(--surface2);color:var(--accent);font-size:10px;letter-spacing:1px;text-align:left;border-bottom:1px solid var(--border);position:sticky;top:0;white-space:nowrap}
+  .data-table tbody tr{border-bottom:1px solid rgba(42,42,64,.4);transition:background .15s}
+  .data-table tbody tr:hover{background:rgba(0,229,255,.03)}
+  .data-table tbody tr.highlight{background:rgba(0,229,255,.07)!important;border-left:2px solid var(--accent)}
+  .data-table td{padding:6px 10px;color:var(--text);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .null-badge{color:var(--danger);background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.22);padding:1px 5px;border-radius:3px;font-size:9px}
+  .no-data{padding:32px;text-align:center;color:var(--muted);font-size:13px}
+
+  /* CHAT */
+  .main{display:flex;flex-direction:column;overflow:hidden}
+  .chat-area{flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:16px}
+  .welcome{margin:auto;text-align:center;max-width:400px;padding:24px}
+  .welcome .icon{width:60px;height:60px;background:linear-gradient(135deg,var(--accent2),var(--accent));border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto 16px;box-shadow:0 0 40px rgba(124,58,237,.3)}
+  .welcome h2{font-size:22px;font-weight:800;margin-bottom:8px}
+  .welcome p{color:var(--muted);font-size:13px;line-height:1.6;margin-bottom:20px}
+  .suggestions{display:flex;flex-direction:column;gap:7px}
+  .suggestion-btn{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:9px 14px;border-radius:8px;font-size:12px;cursor:pointer;text-align:left;transition:all .2s;font-family:'Syne',sans-serif}
+  .suggestion-btn:hover{border-color:var(--accent);color:var(--accent);background:rgba(0,229,255,.04)}
+
+  .msg{display:flex;gap:10px;animation:fadeUp .3s ease}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  .msg.user{flex-direction:row-reverse}
+  .msg-avatar{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+  .msg.user .msg-avatar{background:linear-gradient(135deg,var(--accent2),#a855f7)}
+  .msg.agent .msg-avatar{background:linear-gradient(135deg,#0e7490,var(--accent))}
+  .msg-content{max-width:78%}
+  .msg.user .msg-content{align-items:flex-end;display:flex;flex-direction:column}
+  .msg-bubble{padding:11px 15px;border-radius:12px;font-size:14px;line-height:1.6}
+  .msg.user .msg-bubble{background:linear-gradient(135deg,var(--accent2),#6d28d9);color:white;border-bottom-right-radius:3px}
+  .msg.agent .msg-bubble{background:var(--surface2);border:1px solid var(--border);color:var(--text);border-bottom-left-radius:3px}
+
+  .result-card{margin-top:10px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+  .result-card-header{padding:7px 12px;background:rgba(0,229,255,.05);border-bottom:1px solid var(--border);font-family:'Space Mono',monospace;font-size:10px;color:var(--accent);display:flex;align-items:center;gap:6px}
+  .result-list{padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+  .result-row{display:flex;align-items:center;gap:8px;font-family:'Space Mono',monospace;font-size:11px;color:var(--text)}
+  .result-idx{width:18px;height:18px;background:var(--accent2);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:9px;color:white;flex-shrink:0}
+  .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px}
+  .stat-box{background:rgba(0,0,0,.2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;text-align:center}
+  .stat-box .val{font-size:20px;font-weight:800;color:var(--accent)}
+  .stat-box .lbl{font-size:10px;color:var(--muted);margin-top:2px;font-family:'Space Mono',monospace}
+
+  .token-info{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);margin-top:6px;text-align:right}
+
+  .thinking{display:flex;gap:4px;align-items:center;padding:11px 15px}
+  .thinking span{width:6px;height:6px;background:var(--accent);border-radius:50%;animation:bounce 1.2s infinite}
+  .thinking span:nth-child(2){animation-delay:.2s}
+  .thinking span:nth-child(3){animation-delay:.4s}
+  @keyframes bounce{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-6px);opacity:1}}
+
+  .input-bar{padding:14px 24px;border-top:1px solid var(--border);background:rgba(10,10,15,.95);backdrop-filter:blur(10px);display:flex;gap:10px;align-items:flex-end}
+  textarea{flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:'Syne',sans-serif;font-size:14px;padding:11px 14px;border-radius:10px;resize:none;outline:none;line-height:1.5;max-height:120px;transition:border-color .2s}
+  textarea:focus{border-color:var(--accent)}
+  textarea::placeholder{color:var(--muted)}
+  .send-btn{width:42px;height:42px;background:linear-gradient(135deg,var(--accent2),var(--accent));border:none;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:all .2s;flex-shrink:0}
+  .send-btn:hover{transform:scale(1.06);box-shadow:0 0 20px rgba(0,229,255,.3)}
+  .send-btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+  ::-webkit-scrollbar{width:4px;height:4px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+</style>
+</head>
+<body>
+
+<!-- CONNECT SCREEN -->
+<div id="connectScreen">
+  <div class="connect-card">
+    <div class="connect-logo">🔌</div>
+    <h1>Data<span>Mind</span> Agent</h1>
+    <p>Powered by Python + OpenAI GPT. Connect to any REST endpoint and ask natural language questions about your data.</p>
+
+    <span class="field-label">Quick demos</span>
+    <div class="demo-pills">
+      <div class="demo-pill" onclick="setUrl('MOCK_EMPLOYEES')">🏢 Mock HR</div>
+      <div class="demo-pill" onclick="setUrl('https://jsonplaceholder.typicode.com/users')">👥 Users</div>
+      <div class="demo-pill" onclick="setUrl('https://jsonplaceholder.typicode.com/todos')">✅ Todos</div>
+      <div class="demo-pill" onclick="setUrl('https://dummyjson.com/products')">🛍️ Products</div>
+      <div class="demo-pill" onclick="setUrl('https://dummyjson.com/users')">👤 DummyUsers</div>
+    </div>
+
+    <span class="field-label">Endpoint URL</span>
+    <input class="url-input" id="endpointUrl" type="text" placeholder="https://your-api.com/data  or  MOCK_EMPLOYEES" />
+
+    <span class="field-label">Authorization (optional)</span>
+    <div class="auth-row">
+      <select class="auth-select" id="authType">
+        <option value="none">No Auth</option>
+        <option value="bearer">Bearer Token</option>
+        <option value="apikey">API Key</option>
+      </select>
+      <input class="auth-input" id="authValue" type="text" placeholder="Token / Key value" />
+    </div>
+
+    <button class="connect-btn" id="connectBtn" onclick="connectEndpoint()">
+      ⚡ Connect &amp; Fetch Data
+    </button>
+    <div class="connect-error" id="connectError"></div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="appScreen">
+  <div class="layout">
+    <header>
+      <div class="logo-dot"></div>
+      <h1>Data<span>Mind</span></h1>
+      <div class="endpoint-tag" id="endpointTag">—</div>
+      <button class="reconnect-btn" onclick="showConnect()">↩ Change Source</button>
+      <div class="status-pill">LIVE · GPT</div>
+    </header>
+
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h2>Fetched Data</h2>
+        <span class="row-count" id="rowCount">0 rows</span>
+      </div>
+      <div class="table-wrap">
+        <div id="tableContainer"><div class="no-data">No data loaded</div></div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="chat-area" id="chatArea">
+        <div class="welcome" id="welcome">
+          <div class="icon">🤖</div>
+          <h2>Ask anything about your data</h2>
+          <p>Connected to Python backend. OpenAI GPT will analyze the data and return precise answers.</p>
+          <div class="suggestions" id="suggestionList"></div>
+        </div>
+      </div>
+      <div class="input-bar">
+        <textarea id="userInput" rows="1" placeholder="Ask a question about the data…"
+          onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+        <button class="send-btn" id="sendBtn" onclick="sendMessage()">➤</button>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script>
+// ── Config ────────────────────────────────────────────────────────────────────
+const API_BASE = "";  // empty = same origin (served by FastAPI). Change to "http://localhost:8000" for local dev.
+
+let loadedKeys = [];
+let loadedRows = [];
+let isProcessing = false;
+
+// ── Connect ───────────────────────────────────────────────────────────────────
+function setUrl(u) { document.getElementById('endpointUrl').value = u; }
+
+async function connectEndpoint() {
+  const url       = document.getElementById('endpointUrl').value.trim();
+  const authType  = document.getElementById('authType').value;
+  const authValue = document.getElementById('authValue').value.trim();
+  const errEl     = document.getElementById('connectError');
+  const btn       = document.getElementById('connectBtn');
+
+  errEl.style.display = 'none';
+  if (!url) { showErr('Please enter an endpoint URL.'); return; }
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Fetching…';
+
+  try {
+    const res = await fetch(`${API_BASE}/api/connect`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, auth_type: authType, auth_value: authValue })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Connection failed');
+
+    // Load rows for table display
+    const rowsRes  = await fetch(`${API_BASE}/api/data/rows?page_size=200`);
+    const rowsData = await rowsRes.json();
+    loadedRows = rowsData.rows || [];
+    loadedKeys = data.keys;
+
+    launchApp(url, data);
+
+  } catch(e) {
+    showErr(e.message);
+    btn.disabled = false;
+    btn.textContent = '⚡ Connect & Fetch Data';
+  }
+}
+
+function showErr(msg) {
+  const el = document.getElementById('connectError');
+  el.textContent = '⚠ ' + msg;
+  el.style.display = 'block';
+}
+
+// ── Launch app ────────────────────────────────────────────────────────────────
+function launchApp(url, data) {
+  document.getElementById('connectScreen').style.display = 'none';
+  document.getElementById('appScreen').style.display = 'block';
+  document.getElementById('endpointTag').textContent = url;
+  document.getElementById('rowCount').textContent = `${data.row_count} rows`;
+
+  renderTable([]);
+
+  // Reset chat
+  document.getElementById('chatArea').innerHTML = `
+    <div class="welcome" id="welcome">
+      <div class="icon">🤖</div>
+      <h2>Data loaded — ask anything!</h2>
+      <p>Loaded <strong>${data.row_count} records</strong> · ${data.keys.length} fields:
+        <em style="color:var(--accent)">${data.keys.slice(0,6).join(', ')}${data.keys.length>6?'…':''}</em></p>
+      <div class="suggestions" id="suggestionList"></div>
+    </div>`;
+
+  // Render LLM-generated suggestions
+  const sl = document.getElementById('suggestionList');
+  if (sl && data.suggestions?.length) {
+    sl.innerHTML = data.suggestions.map(s =>
+      `<button class="suggestion-btn" onclick="sendSuggestion(this.textContent)">${s}</button>`
+    ).join('');
+  }
+}
+
+function showConnect() {
+  document.getElementById('appScreen').style.display = 'none';
+  document.getElementById('connectScreen').style.display = 'flex';
+  document.getElementById('connectBtn').disabled = false;
+  document.getElementById('connectBtn').textContent = '⚡ Connect & Fetch Data';
+  document.getElementById('connectError').style.display = 'none';
+}
+
+// ── Render table ──────────────────────────────────────────────────────────────
+function renderTable(hlIdxs=[]) {
+  if (!loadedRows.length) return;
+  const cols = loadedKeys.slice(0,8);
+  let h = `<table class="data-table"><thead><tr>`;
+  cols.forEach(k => h += `<th>${k}</th>`);
+  h += `</tr></thead><tbody>`;
+  loadedRows.forEach((row,i) => {
+    h += `<tr class="${hlIdxs.includes(i)?'highlight':''}">`;
+    cols.forEach(k => {
+      const v = row[k];
+      const isNA = v===null||v===undefined||v==='NA'||v==='N/A'||v==='';
+      const disp = isNA ? `<span class="null-badge">NA</span>`
+        : String(v).length>18 ? String(v).slice(0,17)+'…' : String(v);
+      h += `<td title="${v??''}">${disp}</td>`;
+    });
+    h += `</tr>`;
+  });
+  h += `</tbody></table>`;
+  document.getElementById('tableContainer').innerHTML = h;
+}
+
+// ── Query backend ─────────────────────────────────────────────────────────────
+async function sendMessage() {
+  const input = document.getElementById('userInput');
+  const q = input.value.trim();
+  if (!q || isProcessing) return;
+
+  isProcessing = true;
+  document.getElementById('sendBtn').disabled = true;
+  input.value = ''; input.style.height = 'auto';
+
+  addMsg('user', q);
+  addThinking();
+  renderTable([]);
+
+  try {
+    const res = await fetch(`${API_BASE}/api/query`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question: q })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Query failed');
+
+    removeThinking();
+
+    const extra = buildResultHtml(data) + buildTokenInfo(data);
+    addMsg('agent', data.answer || 'Here is what I found:', extra);
+
+    if (data.highlight_indices?.length > 0) {
+      renderTable(data.highlight_indices);
+      setTimeout(() => {
+        document.querySelector('.data-table tbody tr.highlight')
+          ?.scrollIntoView({ behavior:'smooth', block:'center' });
+      }, 100);
+    }
+  } catch(e) {
+    removeThinking();
+    addMsg('agent', `⚠️ ${e.message}`);
+  }
+
+  isProcessing = false;
+  document.getElementById('sendBtn').disabled = false;
+}
+
+function buildResultHtml(r) {
+  if (r.result_type === 'list' && r.result_items?.length > 0) {
+    const rows = r.result_items.map((item,i) => `
+      <div class="result-row">
+        <div class="result-idx">${i+1}</div>
+        <div style="flex:1"><strong>${item.label}</strong></div>
+        <div style="color:var(--muted);font-size:10px">${item.detail}</div>
+      </div>`).join('');
+    return `<div class="result-card">
+      <div class="result-card-header">📋 ${r.result_items.length} result${r.result_items.length!==1?'s':''} found</div>
+      <div class="result-list">${rows}</div>
+    </div>`;
+  }
+  if (r.result_type === 'stat' && r.stats && Object.keys(r.stats).length > 0) {
+    const boxes = Object.entries(r.stats).map(([k,v]) => `
+      <div class="stat-box"><div class="val">${v}</div><div class="lbl">${k}</div></div>`).join('');
+    return `<div class="result-card">
+      <div class="result-card-header">📊 Statistics</div>
+      <div class="stat-grid">${boxes}</div>
+    </div>`;
+  }
+  return '';
+}
+
+function buildTokenInfo(r) {
+  if (!r.prompt_tokens) return '';
+  return `<div class="token-info">🔑 ${r.model_used} · ${r.prompt_tokens} prompt + ${r.reply_tokens} reply tokens</div>`;
+}
+
+function sendSuggestion(t) { document.getElementById('userInput').value = t; sendMessage(); }
+
+function addMsg(role, content, extra='') {
+  document.getElementById('welcome')?.remove();
+  const chat = document.getElementById('chatArea');
+  const d = document.createElement('div');
+  d.className = `msg ${role}`;
+  d.innerHTML = `
+    <div class="msg-avatar">${role==='user'?'👤':'🤖'}</div>
+    <div class="msg-content"><div class="msg-bubble">${content}${extra}</div></div>`;
+  chat.appendChild(d);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function addThinking() {
+  const chat = document.getElementById('chatArea');
+  const d = document.createElement('div');
+  d.className = 'msg agent'; d.id = 'thinkingMsg';
+  d.innerHTML = `<div class="msg-avatar">🤖</div>
+    <div class="msg-content"><div class="msg-bubble">
+      <div class="thinking"><span></span><span></span><span></span></div>
+    </div></div>`;
+  chat.appendChild(d);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function removeThinking() { document.getElementById('thinkingMsg')?.remove(); }
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+}
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+</script>
+</body>
+</html>
