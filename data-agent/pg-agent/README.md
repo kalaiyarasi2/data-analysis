@@ -35,6 +35,8 @@ cp .env.example .env
 # 3. Run
 python main.py
 # → http://localhost:8000
+# API docs: http://localhost:8000/api/docs
+# Shortcut NLQ endpoint: http://localhost:8000/ask
 ```
 
 ---

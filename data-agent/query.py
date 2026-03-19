@@ -48,6 +48,40 @@ def clean_sql(sql: str) -> str:
     return sql
 
 def normalize_endpoint(endpoint: str) -> str:
+    """Ensure the endpoint is a full URL. Prepend base URL or fix placeholder IPs if needed."""
+    if not endpoint: return endpoint
+    endpoint = endpoint.strip()
+    
+    # Fix hardcoded placeholder IP from frontend if present
+    placeholder_ip = "10.10.8.218"
+    if placeholder_ip in endpoint:
+        endpoint = endpoint.replace(placeholder_ip, "localhost")
+    
+    # If it looks like it has a host (e.g. localhost:8001) but no protocol, prepend http://
+    if endpoint.startswith(("localhost:", "127.0.0.1:")) and not endpoint.startswith(("http://", "https://")):
+        endpoint = "http://" + endpoint
+
+    # If it's already a full valid API path with protocol, return it
+    if endpoint.startswith(("http://", "https://")):
+        return endpoint
+
+    # Handle relative paths - assume they are relative to the pg-agent base
+    # PG_AGENT_API_BASE is like http://localhost:8001/api
+    base_root = PG_AGENT_API_BASE.split("/api")[0]
+    
+    if endpoint.startswith("/api/"):
+        return f"{base_root}{endpoint}"
+    
+    if endpoint.startswith("api/"):
+        return f"{base_root}/{endpoint}"
+        
+    # Default: assume it's just the table name or a tables/views path
+    if endpoint.startswith(("tables/", "views/")):
+        return f"{base_root}/api/{endpoint}"
+        
+    return f"{base_root}/api/tables/{endpoint}"
+
+def normalize_endpoint_deprecated(endpoint: str) -> str:
     """Ensure the endpoint has /api/tables/[name] or /api/views/[name]. Skip NLQ and other special endpoints."""
     if not endpoint: return endpoint
     endpoint = endpoint.strip()
@@ -180,7 +214,7 @@ async def analyze(request: QueryRequest):
         # ── NLQ Mode: check BEFORE normalization ─────────────────────────────
         # When user selects "Full Database (AI Query)" endpoint
         if "/api/nlq/ask" in request.endpoint:
-            nlq_url = request.endpoint  # e.g. http://10.10.8.218:8001/api/nlq/ask
+            nlq_url = normalize_endpoint(request.endpoint)
             async with httpx.AsyncClient(timeout=60.0) as http_client:
                 nlq_resp = await http_client.post(
                     nlq_url,

@@ -12,7 +12,28 @@ export default defineConfig(({ mode }) => ({
       overlay: false,
     },
     proxy: {
-      // ── pg-agent (port 8001) ───────────────────────────────────────────────
+      // ── Port 8000: Uploader / Connect Service ──────────────────────────────
+      "/upload": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
+      "/api/connect": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
+      "/api/data": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
+      "/tables": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
+      "/table": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
+      // ── Port 8001: pg-agent ────────────────────────────────────────────────
       "/api/tables": {
         target: "http://localhost:8001",
         changeOrigin: true,
@@ -29,17 +50,25 @@ export default defineConfig(({ mode }) => ({
         target: "http://localhost:8001",
         changeOrigin: true,
       },
-      // ── Query / AI Agent (port 8002) ───────────────────────────────────────
+      "/api/views": {
+        target: "http://localhost:8001",
+        changeOrigin: true,
+      },
+      "/api/info": {
+        target: "http://localhost:8001",
+        changeOrigin: true,
+      },
+      "/health": {
+        target: "http://localhost:8001",
+        changeOrigin: true,
+      },
+      // ── Port 8002: Query / AI Agent ───────────────────────────────────────
       "/analyze": {
         target: "http://localhost:8002",
         changeOrigin: true,
       },
       "/preview-data": {
         target: "http://localhost:8002",
-        changeOrigin: true,
-      },
-      "/health": {
-        target: "http://localhost:8001",
         changeOrigin: true,
       },
     },

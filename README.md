@@ -42,16 +42,25 @@ To run the full system, start the following services in separate terminals from 
 
 ```powershell
 # 1. Start the Data Uploader (Port 8000)
+
+cd "C:\Users\Intern\data analysis\data-agent\upload_data"
+
 uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
 # 2. Start the Database Gateway (Port 8001)
+
+cd "C:\Users\Intern\data analysis\data-agent"
+
 cd pg-agent; uvicorn main:app --host 0.0.0.0 --port 8001 --reload
 
 # 3. Start the Query Agent (Port 8002)
+
+cd "C:\Users\Intern\data analysis\data-agent"
+
 uvicorn query:app --host 0.0.0.0 --port 8002 --reload
 
 # 4. Start the Frontend (Port 5173)
-cd classic-mode-ui-main; npm run dev
+![1773746295949](image/README/1773746295949.png)
 ```
 
 ---

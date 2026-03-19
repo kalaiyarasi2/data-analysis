@@ -34,7 +34,7 @@ DB_SCHEMA=public          # (Postgres/MSSQL only)
 Restart all services after any configuration change:
 ```powershell
 # In separate terminals:
-uvicorn enhanced_data_uploader:app --host 0.0.0.0 --port 8000 --reload
+S
 cd pg-agent; uvicorn main:app --host 0.0.0.0 --port 8001 --reload
 uvicorn query:app --host 0.0.0.0 --port 8002 --reload
 ```

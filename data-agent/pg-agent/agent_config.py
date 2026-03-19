@@ -1,9 +1,16 @@
-"""config.py — All settings loaded from environment / .env"""
-
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+"""config.py — All settings loaded from environment / .env"""
+
+# Look for .env in current and parent directories
+print(f"DEBUG: CWD is {os.getcwd()}")
+print(f"DEBUG: Loading .env from {os.path.abspath('.env')}")
+load_dotenv(override=True)
+parent_env = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".env"))
+print(f"DEBUG: Loading .env from {parent_env}")
+load_dotenv(parent_env, override=True)
+print(f"DEBUG: OPENAI_API_KEY is {'set' if os.getenv('OPENAI_API_KEY') else 'NOT set'}")
 
 # ── Database Configuration ────────────────────────────────────────────────────
 DB_TYPE:     str = os.getenv("DB_TYPE",     "postgres")  # postgres | mysql | mssql
@@ -12,24 +19,19 @@ DB_PORT:     str = os.getenv("DB_PORT",     os.getenv("PG_PORT", "5432"))
 DB_DB:       str = os.getenv("DB_NAME",     os.getenv("PG_DB",   "postgres"))
 DB_USER:     str = os.getenv("DB_USER",     os.getenv("PG_USER", "postgres"))
 DB_PASSWORD: str = os.getenv("DB_PASSWORD", os.getenv("PG_PASSWORD", ""))
-DB_SCHEMA:   str = os.getenv("DB_SCHEMA",   os.getenv("PG_SCHEMA", "public"))
+DB_SCHEMA:   str = os.getenv("DB_SCHEMA",   os.getenv("PG_SCHEMA", "dbo" if DB_TYPE == "mssql" else "public"))
 
 def get_database_url() -> str:
     import urllib.parse
+    pw = urllib.parse.quote_plus(DB_PASSWORD)
     if DB_TYPE == "postgres":
-        pw = urllib.parse.quote_plus(DB_PASSWORD)
         return f"postgresql+asyncpg://{DB_USER}:{pw}@{DB_HOST}:{DB_PORT}/{DB_DB}"
     elif DB_TYPE == "mysql":
-        pw = urllib.parse.quote_plus(DB_PASSWORD)
         return f"mysql+aiomysql://{DB_USER}:{pw}@{DB_HOST}:{DB_PORT}/{DB_DB}"
     elif DB_TYPE == "mssql":
-        # Requires ODBC Driver for SQL Server
         driver = urllib.parse.quote_plus(os.getenv("DB_DRIVER", "SQL Server"))
-        pw = urllib.parse.quote_plus(DB_PASSWORD)
-        # For SQL Server, some drivers prefer commas for port in SERVER or just host in URL
-        # We'll use the standard URL format but add TrustServerCertificate for better compatibility
         return f"mssql+aioodbc://{DB_USER}:{pw}@{DB_HOST}:{DB_PORT}/{DB_DB}?driver={driver}&TrustServerCertificate=yes"
-    return f"postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_DB}"
+    return f"postgresql+asyncpg://{DB_USER}:{pw}@{DB_HOST}:{DB_PORT}/{DB_DB}"
 
 DATABASE_URL: str = os.getenv("DATABASE_URL", get_database_url())
 PG_SCHEMA: str = DB_SCHEMA
