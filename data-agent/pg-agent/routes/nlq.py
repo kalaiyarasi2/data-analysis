@@ -15,9 +15,11 @@ import re, decimal, datetime
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from openai import AsyncOpenAI
+from typing import Any, Literal
 
 from core.database import db
 from agent_config import OPENAI_API_KEY, OPENAI_MODEL, OPENAI_MAX_TOKENS, PG_SCHEMA, DB_TYPE
+from chat_store import MAX_HISTORY_MESSAGES
 
 router  = APIRouter()
 _client = AsyncOpenAI(api_key=OPENAI_API_KEY)
@@ -48,7 +50,11 @@ def _system_prompt(schema_text: str, db_type: str = "mssql") -> str:
 - Do NOT use LIMIT keyword — it is not valid in T-SQL.
 - Use ISNULL() for null checks, GETDATE() for current date.
 - String concatenation uses +, not ||.
-- For pagination: ORDER BY [col] OFFSET 0 ROWS FETCH NEXT 100 ROWS ONLY."""
+- For pagination: ORDER BY [col] OFFSET 0 ROWS FETCH NEXT 100 ROWS ONLY.
+- When ordering or filtering on numeric values stored as VARCHAR (for example amounts with commas), ALWAYS use a safe conversion pattern:
+  - First remove commas using REPLACE(col, ',', '').
+  - Then use TRY_CONVERT(FLOAT, REPLACE(col, ',', '')) instead of CAST/CONVERT.
+  - Optionally filter to rows where TRY_CONVERT(FLOAT, REPLACE(col, ',', '')) IS NOT NULL to avoid conversion errors."""
     else:
         dialect_rules = f"""- Use PostgreSQL syntax.
 - Use double-quotes for identifiers: "{PG_SCHEMA}"."table_name".
@@ -80,6 +86,12 @@ Database schema (tables and views):
 class NLQRequest(BaseModel):
     question: str
     limit:    int = 100
+    # Optional per-chat identifiers for external tools.
+    # If provided, the server can reuse stored conversation history.
+    session_id: str | None = None
+    # Optional full chat history sent by the client. When present, it is used as context
+    # for generating SQL (and may also be persisted by the proxy layer).
+    messages: list["NLQChatMessage"] | None = None
 
 
 class NLQResponse(BaseModel):
@@ -93,9 +105,12 @@ class NLQResponse(BaseModel):
     reply_tokens:  int
 
 
-# ── Route ─────────────────────────────────────────────────────────────────────
-@router.post("/ask", response_model=NLQResponse, summary="Natural language → SQL → results")
-async def nlq_ask(req: NLQRequest):
+class NLQChatMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str
+
+
+async def _nlq_ask_core(req: NLQRequest, allowed_views: list[str] | None = None) -> NLQResponse:
     if not OPENAI_API_KEY:
         raise HTTPException(503, "OPENAI_API_KEY is not configured.")
     if not req.question.strip():
@@ -121,8 +136,12 @@ async def nlq_ask(req: NLQRequest):
     combined_names = [f"TABLE: {t}" for t in all_table_names] + [f"VIEW: {v}" for v in all_view_names]
     names_text = "\n".join(combined_names)
 
-    # 2. Step 1: Table Selection (Filter 211+ tables down to relevant ones)
-    selection_prompt = f"""Given the following list of tables and views in a {db_type.upper()} database, identify which ones are relevant to the user's question.
+    # 2. Step 1: Table Selection (Filter tables/views down to relevant ones)
+    if allowed_views:
+        # Strict mode: ignore selection LLM and use only the explicitly allowed views.
+        selected_names = [name for name in allowed_views if name in all_table_names or name in all_view_names]
+    else:
+        selection_prompt = f"""Given the following list of tables and views in a {db_type.upper()} database, identify which ones are relevant to the user's question.
 Question: "{req.question}"
 
 Tables/Views:
@@ -134,17 +153,17 @@ Rules:
 - Be inclusive if a table might be needed for JOINs.
 - Limit to maximum 10 tables."""
 
-    try:
-        select_resp = await _client.chat.completions.create(
-            model=OPENAI_MODEL,
-            messages=[{"role": "user", "content": selection_prompt}],
-            temperature=0,
-            max_tokens=200
-        )
-        selected_text = select_resp.choices[0].message.content or "NONE"
-        selected_names = [n.strip() for n in selected_text.split(",") if n.strip() and n.strip() != "NONE"]
-    except Exception:
-        selected_names = all_table_names[:20] # Safe fallback
+        try:
+            select_resp = await _client.chat.completions.create(
+                model=OPENAI_MODEL,
+                messages=[{"role": "user", "content": selection_prompt}],
+                temperature=0,
+                max_tokens=200
+            )
+            selected_text = select_resp.choices[0].message.content or "NONE"
+            selected_names = [n.strip() for n in selected_text.split(",") if n.strip() and n.strip() != "NONE"]
+        except Exception:
+            selected_names = all_table_names[:20]  # Safe fallback
 
     # 3. Step 2: Fetch detailed columns for ONLY selected tables
     schema_map = {}
@@ -168,10 +187,41 @@ Rules:
     schema_text = "\n".join(schema_lines)
 
     # 4. Phase 2: SQL Generation
-    messages = [
+    # We keep the system prompt strict ("output ONLY raw SQL") and add prior conversation
+    # (if supplied) to help follow-ups like "now filter for 2025".
+    sql_messages: list[dict[str, str]] = [
         {"role": "system", "content": _system_prompt(schema_text, db_type)},
-        {"role": "user",   "content": req.question},
     ]
+
+    history_messages: list[dict[str, str]] = []
+    if req.messages:
+        for m in req.messages:
+            # Accept both:
+            # - dict-form messages (what the proxy passes)
+            # - NLQChatMessage objects (what FastAPI normally parses)
+            if isinstance(m, dict):
+                role = str(m.get("role", "")).lower()
+                content = m.get("content", "")
+            else:
+                # Pydantic + Literal already restricts roles, but keep it defensive.
+                role = str(getattr(m, "role", "")).lower()
+                content = getattr(m, "content", "")
+
+            if role not in ("user", "assistant"):
+                continue
+            history_messages.append({"role": role, "content": str(content)})
+
+    # Cap history to avoid prompt blow-up.
+    history_messages = history_messages[-MAX_HISTORY_MESSAGES:]
+    sql_messages.extend(history_messages)
+
+    # Avoid duplicating the last user turn if the client already included it.
+    if sql_messages and sql_messages[-1]["role"] == "user":
+        last_user = sql_messages[-1]["content"].strip()
+        if last_user != req.question.strip():
+            sql_messages.append({"role": "user", "content": req.question})
+    else:
+        sql_messages.append({"role": "user", "content": req.question})
 
     max_attempts = 2
     raw_sql = ""
@@ -184,7 +234,7 @@ Rules:
                 model=OPENAI_MODEL,
                 max_tokens=OPENAI_MAX_TOKENS,
                 temperature=0,
-                messages=messages,
+                messages=sql_messages,
             )
             raw_sql = completion.choices[0].message.content or ""
             raw_sql = re.sub(r"```sql|```", "", raw_sql).strip().rstrip(";")
@@ -220,8 +270,8 @@ Rules:
             
             if attempt < max_attempts - 1:
                 # Add failure to conversation context for correction
-                messages.append({"role": "assistant", "content": raw_sql})
-                messages.append({
+                sql_messages.append({"role": "assistant", "content": raw_sql})
+                sql_messages.append({
                     "role": "user", 
                     "content": f"The SQL above failed with this error: {last_error}\n\nPlease fix the SQL based on the schema and rules provided. Return ONLY the raw corrected SQL."
                 })
@@ -231,3 +281,14 @@ Rules:
 
     # Fallback (should not be reached)
     raise HTTPException(400, f"NLQ failed with error: {last_error}")
+
+
+# ── Route wrappers ─────────────────────────────────────────────────────────────
+@router.post("/ask", response_model=NLQResponse, summary="Natural language → SQL → results")
+async def nlq_ask(req: NLQRequest):
+    return await _nlq_ask_core(req)
+
+
+async def nlq_ask_limited(req: NLQRequest) -> NLQResponse:
+    allowed = ["vw_ProspectDetails", "vw_WageDataAndQuote", "vw_ClientProfitSummary"]
+    return await _nlq_ask_core(req, allowed_views=allowed)

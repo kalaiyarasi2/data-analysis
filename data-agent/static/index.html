@@ -395,7 +395,9 @@ function addMsg(role, content, extra='') {
     <div class="msg-avatar">${role==='user'?'👤':'🤖'}</div>
     <div class="msg-content"><div class="msg-bubble">${content}${extra}</div></div>`;
   chat.appendChild(d);
-  chat.scrollTop = chat.scrollHeight;
+  setTimeout(() => {
+    chat.scrollTop = chat.scrollHeight;
+  }, 50);
 }
 
 function addThinking() {
@@ -407,7 +409,9 @@ function addThinking() {
       <div class="thinking"><span></span><span></span><span></span></div>
     </div></div>`;
   chat.appendChild(d);
-  chat.scrollTop = chat.scrollHeight;
+  setTimeout(() => {
+    chat.scrollTop = chat.scrollHeight;
+  }, 50);
 }
 
 function removeThinking() { document.getElementById('thinkingMsg')?.remove(); }

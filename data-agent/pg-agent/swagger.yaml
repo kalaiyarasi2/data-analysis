@@ -38,6 +38,41 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /ask/limited:
+    post:
+      summary: Chatbot-friendly Q&A endpoint (limited views)
+      description: >
+        Same contract as /ask, but SQL generation is restricted to the views
+        vw_ProspectDetails, vw_WageDataAndQuote, and vw_ClientProfitSummary.
+      operationId: askSimplifiedLimited
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NLQRequest'
+            example:
+              question: "Show profit summary for my top clients."
+              limit: 100
+      responses:
+        '200':
+          description: Simplified response with question, answer, and generated SQL (limited to specific views).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimplifiedAskResponse'
+        '400':
+          description: Validation or generation failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Request validation error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/nlq/ask:
     post:
       summary: Natural Language Query (full technical response)
@@ -81,6 +116,13 @@ components:
         generated_sql:
           type: string
           description: SQL generated and executed to answer the question.
+        session_id:
+          type: string
+          description: Per-chat identifier used to store/reload conversation history.
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/NLQChatMessage'
     NLQRequest:
       type: object
       required:
@@ -94,6 +136,13 @@ components:
           type: integer
           description: Maximum number of rows to return (default 100).
           default: 100
+        session_id:
+          type: string
+          description: If provided, the server will load stored chat history for this session (process-local).
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/NLQChatMessage'
     NLQResponse:
       type: object
       properties:
@@ -120,6 +169,19 @@ components:
           type: integer
         reply_tokens:
           type: integer
+    NLQChatMessage:
+      type: object
+      required:
+        - role
+        - content
+      properties:
+        role:
+          type: string
+          enum:
+            - user
+            - assistant
+        content:
+          type: string
     ErrorResponse:
       type: object
       properties:

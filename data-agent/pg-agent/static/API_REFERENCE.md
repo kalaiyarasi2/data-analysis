@@ -25,8 +25,43 @@ curl -X POST http://10.10.8.206:8001/ask \
 {
   "question": "How many open claims are there for 2024?",
   "answer": "Found 1 result(s). The data shows: {'OpenClaimsCount': 0}",
-  "generated_sql": "SELECT TOP 100 COUNT(*) AS [OpenClaimsCount]..."
+  "generated_sql": "SELECT TOP 100 COUNT(*) AS [OpenClaimsCount]...",
+  "session_id": "c4b0e7f3c8c64f3f8c2e3a8c7a1b2c3d",
+  "messages": [
+    {
+      "role": "user",
+      "content": "How many open claims are there for 2024?"
+    },
+    {
+      "role": "assistant",
+      "content": "Found 1 result(s). The data shows: {'OpenClaimsCount': 0}"
+    }
+  ]
 }
+```
+
+---
+
+### 1b. Follow-up Turn (reuse `session_id` / send `messages`)
+
+```bash
+curl -X POST http://10.10.8.206:8001/ask \
+  -H "Content-Type: application/json" \
+  -d '{
+    "session_id": "c4b0e7f3c8c64f3f8c2e3a8c7a1b2c3d",
+    "question": "Now do the same but only for 2025.",
+    "limit": 100,
+    "messages": [
+      {
+        "role": "user",
+        "content": "How many open claims are there for 2024?"
+      },
+      {
+        "role": "assistant",
+        "content": "Found 1 result(s). The data shows: {'OpenClaimsCount': 0}"
+      }
+    ]
+  }'
 ```
 
 ---
@@ -87,6 +122,8 @@ curl -X POST http://10.10.8.206:8001/api/nlq/ask \
 |-----------|------|----------|---------|-------------|
 | `question` | string | ✅ Yes | — | Natural language question about the database |
 | `limit` | integer | ❌ No | 100 | Max rows to return |
+| `session_id` | string | ❌ No | — | Per-chat identifier (returned by the server) |
+| `messages` | array | ❌ No | — | Chat history: `[{ "role": "user"|"assistant", "content": "..." }]` |
 
 ---
 

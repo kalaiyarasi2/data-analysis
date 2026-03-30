@@ -336,18 +336,40 @@ function renderTable(rows, cols) {
   h += `</tr></thead><tbody>`;
   rows.forEach(row => {
     h += '<tr>';
-    keys.forEach(k => { h += `<td title="${String(row[k]??'')}">${renderCell(row[k])}</td>`; });
+    keys.forEach(k => { h += `<td title="${escAttr(String(row[k]??''))}">${renderCell(row[k])}</td>`; });
     h += '</tr>';
   });
   h += '</tbody></table>';
   document.getElementById('explorerTable').innerHTML = h;
 }
 
+function escAttr(s) {
+  // Escape for HTML attribute contexts inside template strings (title="...").
+  return escHtml(s).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 function renderCell(v) {
   if (v === null || v === undefined || v === '') return '<span class="null-val">NULL</span>';
   if (typeof v === 'boolean') return `<span class="bool-val">${v}</span>`;
   if (typeof v === 'number')  return `<span class="num-val">${v}</span>`;
+
   const s = String(v);
+  const trimmed = s.trim();
+
+  // If the cell already looks like a URL, render it as a clickable anchor.
+  // Only allow http(s) URLs to avoid `javascript:` injection.
+  let href = null;
+  if (/^https?:\/\/\S+$/i.test(trimmed)) {
+    href = trimmed;
+  } else if (/^www\.\S+$/i.test(trimmed)) {
+    href = `https://${trimmed}`;
+  }
+
+  if (href) {
+    const display = s.length > 60 ? s.slice(0,58)+'…' : s;
+    return `<a class="cell-link" href="${escAttr(href)}" target="_blank" rel="noopener noreferrer">${escHtml(display)}</a>`;
+  }
+
   if (/^\d{4}-\d{2}-\d{2}/.test(s)) return `<span class="date-val">${s}</span>`;
   return s.length > 60 ? s.slice(0,58)+'…' : s;
 }
