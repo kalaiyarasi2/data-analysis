@@ -234,7 +234,7 @@ def _render_table_widget_html(columns: list[str], rows: list[dict[str, Any]]) ->
 
     # Inline styles so it works anywhere the HTML is embedded.
     return f"""
-<div style="background:#FFFFFF;color:#000000;border:1px solid #D3D3D3;border-radius:10px;margin:10px 0;overflow:hidden;font-family:'Segoe UI', 'Segoe UI Web (West European)', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;">
+<div style="background:#FFFFFF;color:#000000;border:1px solid #D3D3D3;border-radius:4px;margin:10px 0;overflow:hidden;font-family:'Segoe UI', 'Segoe UI Web (West European)', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;">
 <div style="background:#F97316;color:#FFFFFF;padding:10px 14px;font-weight:700;font-size:12px;letter-spacing:.2px;">
     Table Results
 </div>
@@ -244,7 +244,23 @@ def _render_table_widget_html(columns: list[str], rows: list[dict[str, Any]]) ->
         th, td {{
           border: 1px solid #ddd;
           padding: 6px;
+
         }}
+
+        th{{
+            background:#F97316;
+            color:#FFFFFF
+        }}
+
+        table tbody tr td span {{ 
+        color: #000000 !important;   }}
+ 
+        table tbody tr > td span {{ 
+        color: #000000 !important;  }}
+
+        table tbody tr td {{ 
+        color: #000000 !important;   }}
+
 </style>
 <thead>
 <tr>{thead}</tr>
